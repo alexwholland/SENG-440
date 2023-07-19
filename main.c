@@ -50,12 +50,26 @@ typedef struct ycc_meta_data {
     ycc_meta* data;
 } ycc_meta_data;
 
+/*
+Purpose: Print the RGB pixel values to a file.
+Parameters:
+    - pixel: A pointer to an rgb_pixel structure containing the RGB values.
+    - out: A pointer to the FILE where the RGB pixel values will be written.
+Returns: None.
+*/
 void print_rgb_pixel(rgb_pixel* pixel, FILE* out) {
     fwrite(&pixel->R, sizeof(uint8_t), 1, out);
     fwrite(&pixel->G, sizeof(uint8_t), 1, out);
     fwrite(&pixel->B, sizeof(uint8_t), 1, out);
 }
 
+
+/*
+Purpose: Convert an RGB pixel to YCbCr (YCC) color space.
+Parameters:
+    - in: A pointer to an rgb_pixel structure containing the RGB values.
+Returns: A ycc_pixel structure containing the converted YCC values.
+*/
 ycc_pixel convert_to_ycc(rgb_pixel* in) {
     ycc_pixel* out = malloc(sizeof(ycc_pixel));
     double conversion[3][3] = {
@@ -76,6 +90,12 @@ ycc_pixel convert_to_ycc(rgb_pixel* in) {
     return *out;
 }
 
+/*
+Purpose: Downsample four YCC pixels to create a YCC meta pixel.
+Parameters:
+    - in1, in2, in3, in4: Pointers to ycc_pixel structures containing YCC values for four pixels.
+Returns: A ycc_meta structure containing the downsampled YCC values.
+*/
 ycc_meta downsample_ycc(ycc_pixel* in1, ycc_pixel* in2, ycc_pixel* in3, ycc_pixel* in4) {
     ycc_meta* out = malloc(sizeof(ycc_meta));
     out->Y1 = in1->Y;
@@ -88,6 +108,12 @@ ycc_meta downsample_ycc(ycc_pixel* in1, ycc_pixel* in2, ycc_pixel* in3, ycc_pixe
     return *out;
 }
 
+/*
+Purpose: Upsample a YCC meta pixel to create four YCC pixels.
+Parameters:
+    - in: A pointer to a ycc_meta structure containing YCC meta values.
+Returns: A ycc_array structure containing the upsampled YCC values.
+*/
 ycc_array upsample_ycc(ycc_meta* in) {
     ycc_array* out = malloc(sizeof(ycc_array));
     out->P1.Y = in->Y1;
@@ -108,12 +134,24 @@ ycc_array upsample_ycc(ycc_meta* in) {
     return *out;
 }
 
+/*
+Purpose: Clip a float value to ensure it falls within the 0 to 255 range.
+Parameters:
+    - in: The input float value.
+Returns: The clipped integer value within the range [0, 255].
+*/
 int clip(float in) {
     if (in > 255) return 255;
     else if (in < 0) return 0;
     else return (uint8_t)in;
 }
 
+/*
+Purpose: Convert a YCC pixel to RGB color space.
+Parameters:
+    - in: A pointer to a ycc_pixel structure containing the YCC values.
+Returns: An rgb_pixel structure containing the converted RGB values.
+*/
 rgb_pixel convert_to_rgb(ycc_pixel* in) {
     rgb_pixel* out = malloc(sizeof(rgb_pixel));
 
@@ -124,6 +162,14 @@ rgb_pixel convert_to_rgb(ycc_pixel* in) {
     return *out;
 }
 
+/*
+Purpose: Convert an array of RGB pixels to an array of YCC pixels.
+Parameters:
+    - inData: A pointer to an rgb_data structure containing the RGB pixel array.
+    - height: The height of the image.
+    - width: The width of the image.
+Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
+*/
 ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
     int imageSize = height * width;
 
@@ -141,6 +187,14 @@ ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
     return yccData;
 }
 
+/*
+Purpose: Convert an array of YCC pixels to an array of YCC meta pixels.
+Parameters:
+    - inData: A pointer to a ycc_data structure containing the YCC pixel array.
+    - height: The height of the image.
+    - width: The width of the image.
+Returns: A pointer to a ycc_meta_data structure containing the converted YCC meta pixel array.
+*/
 ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
     int imageSize = height * width;
 
@@ -162,6 +216,14 @@ ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
     return yccMetaData;
 }
 
+/*
+Purpose: Convert an array of YCC meta pixels to an array of YCC pixels.
+Parameters:
+    - inData: A pointer to a ycc_meta_data structure containing the YCC meta pixel array.
+    - height: The height of the image.
+    - width: The width of the image.
+Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
+*/
 ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
     int imageSize = height * width;
 
@@ -184,6 +246,14 @@ ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
     return yccData;
 }
 
+/*
+Purpose: Convert an array of YCC pixels to an array of RGB pixels.
+Parameters:
+    - inData: A pointer to a ycc_data structure containing the YCC pixel array.
+    - height: The height of the image.
+    - width: The width of the image.
+Returns: A pointer to an rgb_data structure containing the converted RGB pixel array.
+*/
 rgb_data* ycc_to_rgb(ycc_data* inData, int height, int width) {
     int imageSize = height * width;
 
@@ -200,6 +270,14 @@ rgb_data* ycc_to_rgb(ycc_data* inData, int height, int width) {
     return rgbData;
 }
 
+/*
+Purpose: Convert an array of RGB pixels to YCC, then back to RGB.
+Parameters:
+    - inData: A pointer to an rgb_data structure containing the RGB pixel array.
+    - height: The height of the image.
+    - width: The width of the image.
+Returns: A pointer to an rgb_data structure containing the converted RGB pixel array.
+*/
 rgb_data* rgb_to_ycc_to_rgb(rgb_data* inData, int height, int width) {
     ycc_data* yccIn = rgb_to_ycc(inData, height, width);
     ycc_meta_data* yccMeta = ycc_to_meta(yccIn, height, width);
