@@ -70,25 +70,27 @@ Parameters:
     - in: A pointer to an rgb_pixel structure containing the RGB values.
 Returns: A ycc_pixel structure containing the converted YCC values.
 */
-ycc_pixel convert_to_ycc(rgb_pixel* in) {
-    ycc_pixel* out = malloc(sizeof(ycc_pixel));
+ycc_pixel convert_to_ycc(rgb_pixel in) {
+    ycc_pixel out;
+
     double conversion[3][3] = {
         {65.481, 128.553, 24.966},
         {-37.797, -74.203, 112.0},
         {112.0, -93.786, -18.214}
     };
     double inArray[3] = {
-        ((double)in->R) / 255,
-        ((double)in->G) / 255,
-        ((double)in->B) / 255
+        ((double)in.R) / 255,
+        ((double)in.G) / 255,
+        ((double)in.B) / 255
     };
 
-    out->Y = 16 + (conversion[0][0] * inArray[0] + conversion[0][1] * inArray[1] + conversion[0][2] * inArray[2]);
-    out->Cb = 128 + (conversion[1][0] * inArray[0] + conversion[1][1] * inArray[1] + conversion[1][2] * inArray[2]);
-    out->Cr = 128 + (conversion[2][0] * inArray[0] + conversion[2][1] * inArray[1] + conversion[2][2] * inArray[2]);
+    out.Y = 16 + (conversion[0][0] * inArray[0] + conversion[0][1] * inArray[1] + conversion[0][2] * inArray[2]);
+    out.Cb = 128 + (conversion[1][0] * inArray[0] + conversion[1][1] * inArray[1] + conversion[1][2] * inArray[2]);
+    out.Cr = 128 + (conversion[2][0] * inArray[0] + conversion[2][1] * inArray[1] + conversion[2][2] * inArray[2]);
 
-    return *out;
+    return out;
 }
+
 
 /*
 Purpose: Downsample four YCC pixels to create a YCC meta pixel.
@@ -115,35 +117,35 @@ Parameters:
 Returns: A ycc_array structure containing the upsampled YCC values.
 */
 ycc_array upsample_ycc(ycc_meta* in) {
-    ycc_array* out = malloc(sizeof(ycc_array));
-    out->P1.Y = in->Y1;
-    out->P2.Y = in->Y2;
-    out->P3.Y = in->Y3;
-    out->P4.Y = in->Y4;
+    ycc_array out;
 
-    out->P1.Cb = in->Cb;
-    out->P2.Cb = in->Cb;
-    out->P3.Cb = in->Cb;
-    out->P4.Cb = in->Cb;
+    // Assign YCC values to the four upsampled pixels
+    out.P1.Y = in->Y1;
+    out.P2.Y = in->Y2;
+    out.P3.Y = in->Y3;
+    out.P4.Y = in->Y4;
 
-    out->P1.Cr = in->Cr;
-    out->P2.Cr = in->Cr;
-    out->P3.Cr = in->Cr;
-    out->P4.Cr = in->Cr;
+    out.P1.Cb = in->Cb;
+    out.P2.Cb = in->Cb;
+    out.P3.Cb = in->Cb;
+    out.P4.Cb = in->Cb;
 
-    return *out;
+    out.P1.Cr = in->Cr;
+    out.P2.Cr = in->Cr;
+    out.P3.Cr = in->Cr;
+    out.P4.Cr = in->Cr;
+
+    return out;
 }
 
 /*
-Purpose: Clip a float value to ensure it falls within the 0 to 255 range.
+Purpose: Truncate a float value to ensure it falls within the 0 to 255 range.
 Parameters:
-    - in: The input float value.
-Returns: The clipped integer value within the range [0, 255].
+    - floatValue: The input float value to be clipped.
+Returns: The truncated float value within the range [0, 255].
 */
-int clip(float in) {
-    if (in > 255) return 255;
-    else if (in < 0) return 0;
-    else return (uint8_t)in;
+float truncateFloat(float floatValue) {
+    return (floatValue < 0.0f) ? 0.0f : ((floatValue > 255.0f) ? 255.0f : floatValue);
 }
 
 /*
@@ -155,9 +157,9 @@ Returns: An rgb_pixel structure containing the converted RGB values.
 rgb_pixel convert_to_rgb(ycc_pixel* in) {
     rgb_pixel* out = malloc(sizeof(rgb_pixel));
 
-    out->R = clip(1.164 * (in->Y - 16) + 1.596 * (in->Cr - 128));
-    out->G = clip((1.164 * (in->Y - 16) - 0.813 * (in->Cr - 128) - 0.391 * (in->Cb - 128)));
-    out->B = clip((1.164 * (in->Y - 16) + 2.018 * (in->Cb - 128)));
+    out->R = truncateFloat(1.164 * (in->Y - 16) + 1.596 * (in->Cr - 128));
+    out->G = truncateFloat((1.164 * (in->Y - 16) - 0.813 * (in->Cr - 128) - 0.391 * (in->Cb - 128)));
+    out->B = truncateFloat((1.164 * (in->Y - 16) + 2.018 * (in->Cb - 128)));
 
     return *out;
 }
@@ -180,7 +182,7 @@ ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             int offset = i * width;
-            yccData->data[offset + j] = convert_to_ycc(&inData->data[offset + j]);
+            yccData->data[offset + j] = convert_to_ycc(inData->data[offset + j]); // Remove the "&" here
         }
     }
 
