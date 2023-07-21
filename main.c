@@ -182,7 +182,7 @@ ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             int offset = i * width;
-            yccData->data[offset + j] = convert_to_ycc(inData->data[offset + j]); // Remove the "&" here
+            yccData->data[offset + j] = convert_to_ycc(inData->data[offset + j]);
         }
     }
 
