@@ -58,11 +58,20 @@ Parameters:
 Returns: None.
 */
 void print_rgb_pixel(rgb_pixel* pixel, FILE* out) {
-    fwrite(&pixel->R, sizeof(uint8_t), 1, out);
-    fwrite(&pixel->G, sizeof(uint8_t), 1, out);
-    fwrite(&pixel->B, sizeof(uint8_t), 1, out);
+    fwrite(&(pixel->R), sizeof(uint8_t), 1, out);
+    fwrite(&(pixel->G), sizeof(uint8_t), 1, out);
+    fwrite(&(pixel->B), sizeof(uint8_t), 1, out);
 }
 
+/*
+Purpose: Truncate a float value to ensure it falls within the 0 to 255 range.
+Parameters:
+    - floatValue: The input float value to be clipped.
+Returns: The truncated float value within the range [0, 255].
+*/
+float truncateFloat(float floatValue) {
+    return ((floatValue < 0.0f) ? 0.0f : ((floatValue > 255.0f) ? 255.0f : floatValue));
+}
 
 /*
 Purpose: Convert an RGB pixel to YCbCr (YCC) color space.
@@ -73,24 +82,23 @@ Returns: A ycc_pixel structure containing the converted YCC values.
 ycc_pixel convert_to_ycc(rgb_pixel in) {
     ycc_pixel out;
 
-    double conversion[3][3] = {
-        {65.481, 128.553, 24.966},
-        {-37.797, -74.203, 112.0},
-        {112.0, -93.786, -18.214}
-    };
-    double inArray[3] = {
-        ((double)in.R) / 255,
-        ((double)in.G) / 255,
-        ((double)in.B) / 255
-    };
+    // Convert RGB values to the range [0, 1]
+    float R = ((float)in.R) / 255.0f;
+    float G = ((float)in.G) / 255.0f;
+    float B = ((float)in.B) / 255.0f;
 
-    out.Y = 16 + (conversion[0][0] * inArray[0] + conversion[0][1] * inArray[1] + conversion[0][2] * inArray[2]);
-    out.Cb = 128 + (conversion[1][0] * inArray[0] + conversion[1][1] * inArray[1] + conversion[1][2] * inArray[2]);
-    out.Cr = 128 + (conversion[2][0] * inArray[0] + conversion[2][1] * inArray[1] + conversion[2][2] * inArray[2]);
+    // Convert to YCC color space without scaling
+    out.Y = (0.299f * R) + (0.587f * G) + (0.114f * B);
+    out.Cb = (-0.168736f * R) - (0.331264f * G) + (0.5f * B);
+    out.Cr = (0.5f * R) - (0.418688f * G) - (0.081312f * B);
+
+    // Scale YCC values to the range [0, 255]
+    out.Y = truncateFloat(16 + (out.Y * 219));
+    out.Cb = truncateFloat(128 + (out.Cb * 224));
+    out.Cr = truncateFloat(128 + (out.Cr * 224));
 
     return out;
 }
-
 
 /*
 Purpose: Downsample four YCC pixels to create a YCC meta pixel.
@@ -139,16 +147,6 @@ ycc_array upsample_ycc(ycc_meta* in) {
 }
 
 /*
-Purpose: Truncate a float value to ensure it falls within the 0 to 255 range.
-Parameters:
-    - floatValue: The input float value to be clipped.
-Returns: The truncated float value within the range [0, 255].
-*/
-float truncateFloat(float floatValue) {
-    return (floatValue < 0.0f) ? 0.0f : ((floatValue > 255.0f) ? 255.0f : floatValue);
-}
-
-/*
 Purpose: Convert a YCC pixel to RGB color space.
 Parameters:
     - in: A pointer to a ycc_pixel structure containing the YCC values.
@@ -157,9 +155,9 @@ Returns: An rgb_pixel structure containing the converted RGB values.
 rgb_pixel convert_to_rgb(ycc_pixel* in) {
     rgb_pixel* out = malloc(sizeof(rgb_pixel));
 
-    out->R = truncateFloat(1.164 * (in->Y - 16) + 1.596 * (in->Cr - 128));
-    out->G = truncateFloat((1.164 * (in->Y - 16) - 0.813 * (in->Cr - 128) - 0.391 * (in->Cb - 128)));
-    out->B = truncateFloat((1.164 * (in->Y - 16) + 2.018 * (in->Cb - 128)));
+    out->R = truncateFloat(1.164f * (in->Y - 16) + 1.596f * (in->Cr - 128));
+    out->G = truncateFloat(1.164f * (in->Y - 16) - 0.813f * (in->Cr - 128) - 0.391f * (in->Cb - 128));
+    out->B = truncateFloat(1.164f * (in->Y - 16) + 2.018f * (in->Cb - 128));
 
     return *out;
 }
