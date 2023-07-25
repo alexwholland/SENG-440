@@ -46,10 +46,6 @@ typedef struct ycc_data {
     ycc_pixel* data;
 } ycc_data;
 
-typedef struct ycc_meta_data {
-    ycc_meta* data;
-} ycc_meta_data;
-
 /*
 Purpose: Print the RGB pixel values to a file.
 Parameters:
@@ -188,65 +184,6 @@ ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
 }
 
 /*
-Purpose: Convert an array of YCC pixels to an array of YCC meta pixels.
-Parameters:
-    - inData: A pointer to a ycc_data structure containing the YCC pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to a ycc_meta_data structure containing the converted YCC meta pixel array.
-*/
-ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
-    int imageSize = height * width;
-
-    ycc_meta_data* yccMetaData;
-    yccMetaData = malloc(sizeof(ycc_meta_data));
-    yccMetaData->data = malloc(sizeof(ycc_meta) * imageSize / 4);
-
-    for (int i = 0; i < height / 2; i++) {
-        for (int j = 0; j < width / 2; j++) {
-            int offset = i * width / 2;
-            int tracer = i * 2 * width + j * 2;
-            yccMetaData->data[offset + j] = downsample_ycc(&inData->data[tracer], 
-                                                           &inData->data[tracer + 1],
-                                                           &inData->data[tracer + width], 
-                                                           &inData->data[tracer + 1 + width]);
-        }
-    }
-
-    return yccMetaData;
-}
-
-/*
-Purpose: Convert an array of YCC meta pixels to an array of YCC pixels.
-Parameters:
-    - inData: A pointer to a ycc_meta_data structure containing the YCC meta pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
-*/
-ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
-    int imageSize = height * width;
-
-    ycc_data* yccData;
-    yccData = malloc(sizeof(ycc_data));
-    yccData->data = malloc(sizeof(ycc_pixel) * imageSize);
-
-    for (int i = 0; i < height / 2; i++) {
-        for (int j = 0; j < width / 2; j++) {
-            int offset = i * width / 2;
-            int tracer = i * 2 * width + j * 2;
-            ycc_array yccArray = upsample_ycc(&inData->data[offset + j]);
-            yccData->data[tracer] = yccArray.P1;
-            yccData->data[tracer + 1] = yccArray.P2;
-            yccData->data[tracer + width] = yccArray.P3;
-            yccData->data[tracer + 1 + width] = yccArray.P4;
-        }
-    }
-
-    return yccData;
-}
-
-/*
 Purpose: Convert an array of YCC pixels to an array of RGB pixels.
 Parameters:
     - inData: A pointer to a ycc_data structure containing the YCC pixel array.
@@ -280,10 +217,9 @@ Returns: A pointer to an rgb_data structure containing the converted RGB pixel a
 */
 rgb_data* rgb_to_ycc_to_rgb(rgb_data* inData, int height, int width) {
     ycc_data* yccIn = rgb_to_ycc(inData, height, width);
-    ycc_meta_data* yccMeta = ycc_to_meta(yccIn, height, width);
-    ycc_data* yccOut = meta_to_ycc(yccMeta, height, width);
+    rgb_data* yccOut = ycc_to_rgb(yccIn, height, width);
 
-    return ycc_to_rgb(yccOut, height, width);
+    return yccOut;
 }
 
 int main(int argc, char* argv[]) {
