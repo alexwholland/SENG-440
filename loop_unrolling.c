@@ -10,18 +10,18 @@ typedef struct rgb_pixel {
 } rgb_pixel;
 
 typedef struct ycc_pixel {
-    float Y;
-    float Cb;
-    float Cr;
+    uint8_t Y;
+    uint8_t Cb;
+    uint8_t Cr;
 } ycc_pixel;
 
 typedef struct ycc_meta {
-    float Y1;
-    float Y2;
-    float Y3;
-    float Y4;
-    float Cb;
-    float Cr;
+    uint8_t Y1;
+    uint8_t Y2;
+    uint8_t Y3;
+    uint8_t Y4;
+    uint8_t Cb;
+    uint8_t Cr;
 } ycc_meta;
 
 typedef struct ycc_array {
@@ -64,113 +64,6 @@ void print_rgb_pixel(rgb_pixel* pixel, FILE* out) {
 }
 
 /*
-Purpose: Truncate a float value to ensure it falls within the 0 to 255 range.
-Parameters:
-    - floatValue: The input float value to be clipped.
-Returns: The truncated float value within the range [0, 255].
-*/
-float truncateFloat(float floatValue) {
-    return ((floatValue < 0.0f) ? 0.0f : ((floatValue > 255.0f) ? 255.0f : floatValue));
-}
-
-/*
-Purpose: Convert an RGB pixel to YCbCr (YCC) color space.
-Parameters:
-    - in: A pointer to an rgb_pixel structure containing the RGB values.
-Returns: A ycc_pixel structure containing the converted YCC values.
-*/
-ycc_pixel convert_to_ycc(rgb_pixel in) {
-    ycc_pixel out;
-
-    // Convert RGB values to the range [0, 1]
-    float inverse_255 = 1 / 255.0f;
-    float R = ((float)in.R) * inverse_255;
-    float G = ((float)in.G) * inverse_255;
-    float B = ((float)in.B) * inverse_255;
-
-    // Convert to YCC color space without scaling
-    out.Y = (0.299f * R) + (0.587f * G) + (0.114f * B);
-    out.Cb = (-0.168736f * R) - (0.331264f * G) + (0.5f * B);
-    out.Cr = (0.5f * R) - (0.418688f * G) - (0.081312f * B);
-
-    // Scale YCC values to the range [0, 255]
-    out.Y = truncateFloat(16 + (out.Y * 219));
-    out.Cb = truncateFloat(128 + (out.Cb * 224));
-    out.Cr = truncateFloat(128 + (out.Cr * 224));
-
-    return out;
-}
-
-/*
-Purpose: Downsample four YCC pixels to create a YCC meta pixel.
-Parameters:
-    - in1, in2, in3, in4: Pointers to ycc_pixel structures containing YCC values for four pixels.
-Returns: A ycc_meta structure containing the downsampled YCC values.
-*/
-ycc_meta downsample_ycc(ycc_pixel* in1, ycc_pixel* in2, ycc_pixel* in3, ycc_pixel* in4) {
-    ycc_meta* out = malloc(sizeof(ycc_meta));
-
-    out->Y1 = in1->Y;
-    out->Y2 = in2->Y;
-    out->Y3 = in3->Y;
-    out->Y4 = in4->Y;
-
-    float inverse_4 = 1 / 4.0f;
-    out->Cb = (in1->Cb + in2->Cb + in3->Cb + in4->Cb) * inverse_4;
-    out->Cr = (in1->Cr + in2->Cr + in3->Cr + in4->Cr) * inverse_4;
-
-    return *out;
-}
-
-/*
-Purpose: Upsample a YCC meta pixel to create four YCC pixels.
-Parameters:
-    - in: A pointer to a ycc_meta structure containing YCC meta values.
-Returns: A ycc_array structure containing the upsampled YCC values.
-*/
-ycc_array upsample_ycc(ycc_meta* in) {
-    ycc_array out;
-
-    // Assign YCC values to the four upsampled pixels
-    out.P1.Y = in->Y1;
-    out.P2.Y = in->Y2;
-    out.P3.Y = in->Y3;
-    out.P4.Y = in->Y4;
-
-    out.P1.Cb = in->Cb;
-    out.P2.Cb = in->Cb;
-    out.P3.Cb = in->Cb;
-    out.P4.Cb = in->Cb;
-
-    out.P1.Cr = in->Cr;
-    out.P2.Cr = in->Cr;
-    out.P3.Cr = in->Cr;
-    out.P4.Cr = in->Cr;
-
-    return out;
-}
-
-/*
-Purpose: Convert a YCC pixel to RGB color space.
-Parameters:
-    - in: A pointer to a ycc_pixel structure containing the YCC values.
-Returns: An rgb_pixel structure containing the converted RGB values.
-*/
-rgb_pixel convert_to_rgb(ycc_pixel* in) {
-    rgb_pixel* out = malloc(sizeof(rgb_pixel));
-
-    float Y_minus_16 = in->Y - 16;
-    float Cb_minus_128 = in->Cb - 128;
-    float Cr_minus_128 = in->Cr - 128;
-
-    out->R = truncateFloat(1.164f * Y_minus_16 + 1.596f * Cr_minus_128);
-    out->G = truncateFloat(1.164f * Y_minus_16 - 0.813f * Cr_minus_128 - 0.391f * Cb_minus_128);
-    out->B = truncateFloat(1.164f * Y_minus_16 + 2.018f * Cb_minus_128);
-
-    return *out;
-}
-
-/*
 Purpose: Convert an array of RGB pixels to an array of YCC pixels.
 Parameters:
     - inData: A pointer to an rgb_data structure containing the RGB pixel array.
@@ -178,25 +71,31 @@ Parameters:
     - width: The width of the image.
 Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
 */
-ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width) {
-    int imageSize = height * width;
+ycc_data* rgb_to_ycc(rgb_data* inData, int height, int width){
+  int imageSize = height * width;
 
-    ycc_data* yccData;
-    yccData = malloc(sizeof(ycc_data));
-    yccData->data = malloc(sizeof(ycc_pixel) * imageSize);
+  ycc_data* yccData;
+  yccData = malloc(sizeof(ycc_data));
+  yccData->data = malloc(sizeof(ycc_pixel) * imageSize);
 
-    for (int i = 0; i < height; i++) {
-        int offset = i * width;
-        // Loop unrolling: Process four pixels at a time
-        for (int j = 0; j < width; j += 4) {
-            yccData->data[offset + j] = convert_to_ycc(inData->data[offset + j]);
-            yccData->data[offset + j + 1] = convert_to_ycc(inData->data[offset + j + 1]);
-            yccData->data[offset + j + 2] = convert_to_ycc(inData->data[offset + j + 2]);
-            yccData->data[offset + j + 3] = convert_to_ycc(inData->data[offset + j + 3]);
-        }
-    }
+  for(int i = 0; i < imageSize; i += 4){
+    yccData->data[i].Y  = 16 +  (( 16763*inData->data[i].R +  32909*inData->data[i].G +  6391*inData->data[i].B) >> 16);
+    yccData->data[i].Cb = 128 + (( -9676*inData->data[i].R + -18996*inData->data[i].G + 28672*inData->data[i].B) >> 16);
+    yccData->data[i].Cr = 128 + (( 28672*inData->data[i].R + -24009*inData->data[i].G + -4662*inData->data[i].B) >> 16);
 
-    return yccData;
+    yccData->data[i+1].Y  = 16 +  (( 16763*inData->data[i+1].R +  32909*inData->data[i+1].G +  6391*inData->data[i+1].B) >> 16);
+    yccData->data[i+1].Cb = 128 + (( -9676*inData->data[i+1].R + -18996*inData->data[i+1].G + 28672*inData->data[i+1].B) >> 16);
+    yccData->data[i+1].Cr = 128 + (( 28672*inData->data[i+1].R + -24009*inData->data[i+1].G + -4662*inData->data[i+1].B) >> 16);
+
+    yccData->data[i+2].Y  = 16 +  (( 16763*inData->data[i+2].R +  32909*inData->data[i+2].G +  6391*inData->data[i+2].B) >> 16);
+    yccData->data[i+2].Cb = 128 + (( -9676*inData->data[i+2].R + -18996*inData->data[i+2].G + 28672*inData->data[i+2].B) >> 16);
+    yccData->data[i+2].Cr = 128 + (( 28672*inData->data[i+2].R + -24009*inData->data[i+2].G + -4662*inData->data[i+2].B) >> 16);
+
+    yccData->data[i+3].Y  = 16 +  (( 16763*inData->data[i+3].R +  32909*inData->data[i+3].G +  6391*inData->data[i+3].B) >> 16);
+    yccData->data[i+3].Cb = 128 + (( -9676*inData->data[i+3].R + -18996*inData->data[i+3].G + 28672*inData->data[i+3].B) >> 16);
+    yccData->data[i+3].Cr = 128 + (( 28672*inData->data[i+3].R + -24009*inData->data[i+3].G + -4662*inData->data[i+3].B) >> 16);
+  }
+  return yccData;
 }
 
 /*
@@ -207,7 +106,7 @@ Parameters:
     - width: The width of the image.
 Returns: A pointer to a ycc_meta_data structure containing the converted YCC meta pixel array.
 */
-ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
+ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width){
     int imageSize = height * width;
     int metaSize = imageSize >> 2;
     int halfHeight = height >> 1;
@@ -217,19 +116,19 @@ ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
     yccMetaData = malloc(sizeof(ycc_meta_data));
     yccMetaData->data = malloc(sizeof(ycc_meta) * metaSize);
 
-    for (int i = 0; i < halfHeight; i++) {
-        int offset = i * halfWidth;
-        int tracer = i * (2 * width);
-        for (int j = 0; j < halfWidth; j++) {
-            int tracer_sum = tracer + (j << 1);
-            yccMetaData->data[offset + j] = downsample_ycc(&inData->data[tracer_sum], 
-                                                           &inData->data[tracer_sum + 1],
-                                                           &inData->data[tracer_sum + width], 
-                                                           &inData->data[tracer_sum + 1 + width]);
+    for(int i = 0; i < halfHeight; i++){
+        int offset = i * width >> 1;
+        for(int j = 0; j < halfWidth; j++){
+            int tracer = i * 2 * width + j * 2;
+            yccMetaData->data[offset+j].Y1  = inData->data[tracer].Y;
+            yccMetaData->data[offset+j].Y2  = inData->data[tracer+1].Y;
+            yccMetaData->data[offset+j].Y3  = inData->data[tracer+width].Y;
+            yccMetaData->data[offset+j].Y4  = inData->data[tracer+1+width].Y;
+            yccMetaData->data[offset+j].Cb = (inData->data[tracer].Cb + inData->data[tracer+1].Cb + inData->data[tracer+width].Cb + inData->data[tracer+1+width].Cb) >> 2;
+            yccMetaData->data[offset+j].Cr = (inData->data[tracer].Cr + inData->data[tracer+1].Cr + inData->data[tracer+width].Cr + inData->data[tracer+1+width].Cr) >> 2;
         }
     }
-
-    return yccMetaData;
+  return yccMetaData;
 }
 
 /*
@@ -240,7 +139,7 @@ Parameters:
     - width: The width of the image.
 Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
 */
-ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
+ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width){
     int imageSize = height * width;
     int metaSize = imageSize >> 2;
     int halfHeight = height >> 1;
@@ -250,20 +149,27 @@ ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
     yccData = malloc(sizeof(ycc_data));
     yccData->data = malloc(sizeof(ycc_pixel) * imageSize);
 
-    for (int i = 0; i < halfHeight; i++) {
-        int offset = i * (halfWidth);
-        int tracer = i * (2 * width);
-        for (int j = 0; j < halfWidth; j++) {
-            int tracer_sum = tracer + (j << 1);
-            ycc_array yccArray = upsample_ycc(&inData->data[offset + j]);
-            yccData->data[tracer_sum] = yccArray.P1;
-            yccData->data[tracer_sum + 1] = yccArray.P2;
-            yccData->data[tracer_sum + width] = yccArray.P3;
-            yccData->data[tracer_sum + 1 + width] = yccArray.P4;
+    for(int i = 0; i < halfHeight; i++){
+        int offset = i * width / 2;
+        for(int j = 0; j < halfWidth; j++){
+        int tracer = i * 2 * width + j * 2;
+        yccData->data[tracer].Y = inData->data[offset+j].Y1;
+        yccData->data[tracer+1].Y = inData->data[offset+j].Y2;
+        yccData->data[tracer+width].Y = inData->data[offset+j].Y3;
+        yccData->data[tracer+1+width].Y = inData->data[offset+j].Y4;
+
+        yccData->data[tracer].Cb = inData->data[offset+j].Cb;
+        yccData->data[tracer+1].Cb = inData->data[offset+j].Cb;
+        yccData->data[tracer+width].Cb = inData->data[offset+j].Cb;
+        yccData->data[tracer+1+width].Cb = inData->data[offset+j].Cb;
+
+        yccData->data[tracer].Cr = inData->data[offset+j].Cr;
+        yccData->data[tracer+1].Cr = inData->data[offset+j].Cr;
+        yccData->data[tracer+width].Cr = inData->data[offset+j].Cr;
+        yccData->data[tracer+1+width].Cr = inData->data[offset+j].Cr;
         }
     }
-
-    return yccData;
+  return yccData;
 }
 
 /*
@@ -274,24 +180,49 @@ Parameters:
     - width: The width of the image.
 Returns: A pointer to an rgb_data structure containing the converted RGB pixel array.
 */
-rgb_data* ycc_to_rgb(ycc_data* inData, int height, int width) {
+rgb_data* ycc_to_rgb(ycc_data* inData, int height, int width){
     int imageSize = height * width;
 
     rgb_data* rgbData;
     rgbData = malloc(sizeof(rgb_data));
-    rgbData->data = malloc(sizeof(rgb_pixel) * imageSize);
+    rgbData->data = malloc(sizeof(rgb_pixel)*imageSize);
+    for(int i = 0; i < imageSize ; i += 4){
+        int y1 = 4882170*(inData->data[i].Y -16);
+        int r1 = (y1 + 6694109*(inData->data[i].Cr - 128)) >> 22;
+        int g1 = ((y1 - 3409969*(inData->data[i].Cr - 128) - 1639973*(inData->data[i].Cb - 128))) >> 22;
+        int b1 = (y1 + 8464105*(inData->data[i].Cb - 128)) >> 22;
 
-    for (int i = 0; i < height; i++) {
-        int offset = i * width;
-        // Loop unrolling: Process four pixels at a time
-        for (int j = 0; j < width; j += 4) {
-            rgbData->data[offset + j] = convert_to_rgb(&inData->data[offset + j]);
-            rgbData->data[offset + j + 1] = convert_to_rgb(&inData->data[offset + j + 1]);
-            rgbData->data[offset + j + 2] = convert_to_rgb(&inData->data[offset + j + 2]);
-            rgbData->data[offset + j + 3] = convert_to_rgb(&inData->data[offset + j + 3]);
-        }
+        rgbData->data[i].R = r1 > 255 ? 255 : (r1 < 0 ? 0 : r1);
+        rgbData->data[i].G = g1 > 255 ? 255 : (g1 < 0 ? 0 : g1);
+        rgbData->data[i].B = b1 > 255 ? 255 : (b1 < 0 ? 0 : b1);
+
+        int y2 = 4882170*(inData->data[i+1].Y -16);
+        int r2 = (y2 + 6694109*(inData->data[i+1].Cr - 128)) >> 22;
+        int g2 = ((y2 - 3409969*(inData->data[i+1].Cr - 128) - 1639973*(inData->data[i+1].Cb - 128))) >> 22;
+        int b2 = (y2 + 8464105*(inData->data[i+1].Cb - 128)) >> 22;
+
+        rgbData->data[i+1].R = r2 > 255 ? 255 : (r2 < 0 ? 0 : r2);
+        rgbData->data[i+1].G = g2 > 255 ? 255 : (g2 < 0 ? 0 : g2);
+        rgbData->data[i+1].B = b2 > 255 ? 255 : (b2 < 0 ? 0 : b2);
+
+        int y3 = 4882170*(inData->data[i+2].Y -16);
+        int r3 = (y3 + 6694109*(inData->data[i+2].Cr - 128)) >> 22;
+        int g3 = ((y3 - 3409969*(inData->data[i+2].Cr - 128) - 1639973*(inData->data[i+2].Cb - 128))) >> 22;
+        int b3 = (y3 + 8464105*(inData->data[i+2].Cb - 128)) >> 22;
+
+        rgbData->data[i+2].R = r3 > 255 ? 255 : (r3 < 0 ? 0 : r3);
+        rgbData->data[i+2].G = g3 > 255 ? 255 : (g3 < 0 ? 0 : g3);
+        rgbData->data[i+2].B = b3 > 255 ? 255 : (b3 < 0 ? 0 : b3);
+
+        int y4 = 4882170*(inData->data[i+3].Y -16);
+        int r4 = (y4 + 6694109*(inData->data[i+3].Cr - 128)) >> 22;
+        int g4 = ((y4 - 3409969*(inData->data[i+3].Cr - 128) - 1639973*(inData->data[i+3].Cb - 128))) >> 22;
+        int b4 = (y4 + 8464105*(inData->data[i+3].Cb - 128)) >> 22;
+
+        rgbData->data[i+3].R = r4 > 255 ? 255 : (r4 < 0 ? 0 : r4);
+        rgbData->data[i+3].G = g4 > 255 ? 255 : (g4 < 0 ? 0 : g4);
+        rgbData->data[i+3].B = b4 > 255 ? 255 : (b4 < 0 ? 0 : b4);
     }
-
     return rgbData;
 }
 
