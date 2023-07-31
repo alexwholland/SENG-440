@@ -73,9 +73,9 @@ sampling_data* downsample_ycc(ycc_data* input, int height, int width) {
     to_downsample->data = malloc(sizeof(sample) * (image_size >> 2));
 
     register int i, j, offset, outline;
-    for (i = (height >> 1) - 1; i != -1; i--) {
+    for (i = 0; i < (height >> 1); i++) {
         offset = i * width >> 1;
-        for (j = (width >> 1) - 1; j != -1; j--) {
+        for (j = 0; j < (width >> 1); j++) {
             outline = i * 2 * width + j * 2;
             to_downsample->data[offset + j].Y1 = input->data[outline].Y;
             to_downsample->data[offset + j].Y2 = input->data[outline + 1].Y;
@@ -96,9 +96,9 @@ ycc_data* upsample_ycc(sampling_data* input, int height, int width) {
     to_upsample->data = malloc(sizeof(ycc_pixel) * image_size);
     
     register int i, j, offset, outline;
-    for (i = (height >> 1) - 1; i != -1; i--) {
+    for (i = 0; i != (height >> 1); i++) {
         offset = i * (width >> 1);
-        for (j = (width >> 1) - 1; j != -1; j--) {
+        for (j = 0; j != (width >> 1); j++) {
             outline = i * 2 * width + j * 2;
             to_upsample->data[outline].Y = input->data[offset + j].Y1;
             to_upsample->data[outline + 1].Y = input->data[offset + j].Y2;
