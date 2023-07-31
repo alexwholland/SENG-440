@@ -100,7 +100,7 @@ ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
 
     register ycc_meta_data* yccMetaData;
     yccMetaData = malloc(sizeof(ycc_meta_data));
-    yccMetaData->data = malloc(sizeof(ycc_meta) * imageSize / 4);
+    yccMetaData->data = malloc(sizeof(ycc_meta) * (imageSize >> 2));
 
     register int i, j, offset, tracer;
     for (i = (height >> 1) - 1; i != -1; i--) {
@@ -117,7 +117,6 @@ ycc_meta_data* ycc_to_meta(ycc_data* inData, int height, int width) {
     }
     return yccMetaData;
 }
-
 
 /*
 Purpose: Convert an array of YCC meta pixels to an array of YCC pixels.
@@ -136,7 +135,7 @@ ycc_data* meta_to_ycc(ycc_meta_data* inData, int height, int width) {
     
     register int i, j, offset, tracer;
     for (i = (height >> 1) - 1; i != -1; i--) {
-        offset = i * width / 2;
+        offset = i * (width >> 1);
         for (j = (width >> 1) - 1; j != -1; j--) {
             tracer = i * 2 * width + j * 2;
             yccData->data[tracer].Y = inData->data[offset + j].Y1;
