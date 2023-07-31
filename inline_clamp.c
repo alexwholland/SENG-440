@@ -96,9 +96,9 @@ ycc_data* upsample_ycc(sampling_data* input, int height, int width) {
     to_upsample->data = malloc(sizeof(ycc_pixel) * image_size);
     
     register int i, j, offset, outline;
-    for (i = 0; i != (height >> 1); i++) {
+    for (i = 0; i < (height >> 1); i++) {
         offset = i * (width >> 1);
-        for (j = 0; j != (width >> 1); j++) {
+        for (j = 0; j < (width >> 1); j++) {
             outline = i * 2 * width + j * 2;
             to_upsample->data[outline].Y = input->data[offset + j].Y1;
             to_upsample->data[outline + 1].Y = input->data[offset + j].Y2;
@@ -136,39 +136,38 @@ rgb_data* ycc_to_rgb(ycc_data* input, int height, int width) {
     to_rgb->data = malloc(sizeof(rgb_pixel) * image_size);
 
     register int i;
-    for (i = image_size - 1; i != -1; i -= 4) {
+    for (i = 0; i < image_size; i += 4) {
         int Y0 = input->data[i].Y - 16;
-        int Y1 = input->data[i - 1].Y - 16;
-        int Y2 = input->data[i - 2].Y - 16;
-        int Y3 = input->data[i - 3].Y - 16;
+        int Y1 = input->data[i + 1].Y - 16;
+        int Y2 = input->data[i + 2].Y - 16;
+        int Y3 = input->data[i + 3].Y - 16;
 
         int Cb0 = input->data[i].Cb - 128;
-        int Cb1 = input->data[i - 1].Cb - 128;
-        int Cb2 = input->data[i - 2].Cb - 128;
-        int Cb3 = input->data[i - 3].Cb - 128;
+        int Cb1 = input->data[i + 1].Cb - 128;
+        int Cb2 = input->data[i + 2].Cb - 128;
+        int Cb3 = input->data[i + 3].Cb - 128;
         
         int Cr0 = input->data[i].Cr - 128;
-        int Cr1 = input->data[i - 1].Cr - 128;
-        int Cr2 = input->data[i - 2].Cr - 128;
-        int Cr3 = input->data[i - 3].Cr - 128;
+        int Cr1 = input->data[i + 1].Cr - 128;
+        int Cr2 = input->data[i + 2].Cr - 128;
+        int Cr3 = input->data[i + 3].Cr - 128;
 
         to_rgb->data[i].R = clamp((4882170 * Y0 + 6694109 * Cr0) >> 22);
         to_rgb->data[i].G = clamp((4882170 * Y0 - 3409969 * Cr0 - 1639973 * Cb0) >> 22);
         to_rgb->data[i].B = clamp((4882170 * Y0 + 8464105 * Cb0) >> 22);
 
-        to_rgb->data[i - 1].R = clamp((4882170 * Y1 + 6694109 * Cr1) >> 22);
-        to_rgb->data[i - 1].G = clamp((4882170 * Y1 - 3409969 * Cr1 - 1639973 * Cb1) >> 22);
-        to_rgb->data[i - 1].B = clamp((4882170 * Y1 + 8464105 * Cb1) >> 22);
+        to_rgb->data[i + 1].R = clamp((4882170 * Y1 + 6694109 * Cr1) >> 22);
+        to_rgb->data[i + 1].G = clamp((4882170 * Y1 - 3409969 * Cr1 - 1639973 * Cb1) >> 22);
+        to_rgb->data[i + 1].B = clamp((4882170 * Y1 + 8464105 * Cb1) >> 22);
 
-        to_rgb->data[i - 2].R = clamp((4882170 * Y2 + 6694109 * Cr2) >> 22);
-        to_rgb->data[i - 2].G = clamp((4882170 * Y2 - 3409969 * Cr2 - 1639973 * Cb2) >> 22);
-        to_rgb->data[i - 2].B = clamp((4882170 * Y2 + 8464105 * Cb2) >> 22);
+        to_rgb->data[i + 2].R = clamp((4882170 * Y2 + 6694109 * Cr2) >> 22);
+        to_rgb->data[i + 2].G = clamp((4882170 * Y2 - 3409969 * Cr2 - 1639973 * Cb2) >> 22);
+        to_rgb->data[i + 2].B = clamp((4882170 * Y2 + 8464105 * Cb2) >> 22);
 
-        to_rgb->data[i - 3].R = clamp((4882170 * Y3 + 6694109 * Cr3) >> 22);
-        to_rgb->data[i - 3].G = clamp((4882170 * Y3 - 3409969 * Cr3 - 1639973 * Cb3) >> 22);
-        to_rgb->data[i - 3].B = clamp((4882170 * Y3 + 8464105 * Cb3) >> 22);
+        to_rgb->data[i + 3].R = clamp((4882170 * Y3 + 6694109 * Cr3) >> 22);
+        to_rgb->data[i + 3].G = clamp((4882170 * Y3 - 3409969 * Cr3 - 1639973 * Cb3) >> 22);
+        to_rgb->data[i + 3].B = clamp((4882170 * Y3 + 8464105 * Cb3) >> 22);
     }
-
 
     return to_rgb;
 }
