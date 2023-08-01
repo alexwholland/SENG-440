@@ -1,7 +1,7 @@
 # SENG-440: Embedded Systems
 
 ## Project: Colour Space Conversion
-This repository contains the code to the Colour Space Conversion (CSC) project completed on August 1. The repository contains:
+This repository contains the code to the Colour Space Conversion (CSC) project completed on August 1, 2023. The repository contains:
 
 - `unoptimized.c`: the un-optimized CSC project
 - `optimized.c`: the optimized CSC project
@@ -44,8 +44,9 @@ gcc -o optimized -g optimized.c
 To measure performance ensure that you install valgrind and perf with:
 
 ```
-dnf install valgrind
-dnf install perf
+sudo dnf install bc
+sudo dnf install valgrind
+sudo dnf install perf
 ```
 
 To measure the cache misses of the specified program you can run:
