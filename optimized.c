@@ -36,14 +36,6 @@ typedef struct sampling_data {
     sample* data;
 } sampling_data;
 
-/*
-Purpose: Convert an array of RGB pixels to an array of YCC pixels.
-Parameters:
-    - input: A pointer to an rgb_data structure containing the RGB pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
-*/
 ycc_data* rgb_to_ycc(rgb_data* input, int height, int width){
     int image_size = height * width;
 
@@ -73,14 +65,6 @@ ycc_data* rgb_to_ycc(rgb_data* input, int height, int width){
     return to_ycc;
 }
 
-/*
-Purpose: Convert an array of YCC pixels to an array of YCC meta pixels.
-Parameters:
-    - input: A pointer to a ycc_data structure containing the YCC pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to a sampling_data structure containing the converted YCC meta pixel array.
-*/
 sampling_data* downsample_ycc(ycc_data* input, int height, int width) {
     int image_size = height * width;
 
@@ -89,9 +73,9 @@ sampling_data* downsample_ycc(ycc_data* input, int height, int width) {
     to_downsample->data = malloc(sizeof(sample) * (image_size >> 2));
 
     register int i, j, offset, outline;
-    for (i = (height >> 1) - 1; i != -1; i--) {
+    for (i = 0; i < (height >> 1); i++) {
         offset = i * width >> 1;
-        for (j = (width >> 1) - 1; j != -1; j--) {
+        for (j = 0; j < (width >> 1); j++) {
             outline = i * 2 * width + j * 2;
             to_downsample->data[offset + j].Y1 = input->data[outline].Y;
             to_downsample->data[offset + j].Y2 = input->data[outline + 1].Y;
@@ -104,14 +88,6 @@ sampling_data* downsample_ycc(ycc_data* input, int height, int width) {
     return to_downsample;
 }
 
-/*
-Purpose: Convert an array of YCC meta pixels to an array of YCC pixels.
-Parameters:
-    - input: A pointer to a sampling_data structure containing the YCC meta pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to a ycc_data structure containing the converted YCC pixel array.
-*/
 ycc_data* upsample_ycc(sampling_data* input, int height, int width) {
     int image_size = height * width;
 
@@ -120,9 +96,9 @@ ycc_data* upsample_ycc(sampling_data* input, int height, int width) {
     to_upsample->data = malloc(sizeof(ycc_pixel) * image_size);
     
     register int i, j, offset, outline;
-    for (i = (height >> 1) - 1; i != -1; i--) {
+    for (i = 0; i < (height >> 1); i++) {
         offset = i * (width >> 1);
-        for (j = (width >> 1) - 1; j != -1; j--) {
+        for (j = 0; j < (width >> 1); j++) {
             outline = i * 2 * width + j * 2;
             to_upsample->data[outline].Y = input->data[offset + j].Y1;
             to_upsample->data[outline + 1].Y = input->data[offset + j].Y2;
@@ -144,14 +120,14 @@ ycc_data* upsample_ycc(sampling_data* input, int height, int width) {
     return to_upsample;
 }
 
-/*
-Purpose: Convert an array of YCC pixels to an array of RGB pixels.
-Parameters:
-    - input: A pointer to a ycc_data structure containing the YCC pixel array.
-    - height: The height of the image.
-    - width: The width of the image.
-Returns: A pointer to an rgb_data structure containing the converted RGB pixel array.
-*/
+static inline int32_t clamp(int32_t x) {
+    uint32_t y = x >> 8;
+    if (y)
+        x = ~y >> 24;
+    
+    return x;
+}
+
 rgb_data* ycc_to_rgb(ycc_data* input, int height, int width) {
     int image_size = height * width;
 
@@ -160,42 +136,37 @@ rgb_data* ycc_to_rgb(ycc_data* input, int height, int width) {
     to_rgb->data = malloc(sizeof(rgb_pixel) * image_size);
 
     register int i;
-    for (i = image_size - 1; i != -1; i -= 4) {
-        int y1 = 4882170 * (input->data[i].Y - 16);
-        int r1 = (y1 + 6694109 * (input->data[i].Cr - 128)) >> 22;
-        int g1 = ((y1 - 3409969 * (input->data[i].Cr - 128) - 1639973 * (input->data[i].Cb - 128))) >> 22;
-        int b1 = (y1 + 8464105 * (input->data[i].Cb - 128)) >> 22;
+    for (i = 0; i < image_size; i += 4) {
+        int Y0 = input->data[i].Y - 16;
+        int Y1 = input->data[i + 1].Y - 16;
+        int Y2 = input->data[i + 2].Y - 16;
+        int Y3 = input->data[i + 3].Y - 16;
 
-        to_rgb->data[i].R = r1 > 255 ? 255 : (r1 < 0 ? 0 : r1);
-        to_rgb->data[i].G = g1 > 255 ? 255 : (g1 < 0 ? 0 : g1);
-        to_rgb->data[i].B = b1 > 255 ? 255 : (b1 < 0 ? 0 : b1);
+        int Cb0 = input->data[i].Cb - 128;
+        int Cb1 = input->data[i + 1].Cb - 128;
+        int Cb2 = input->data[i + 2].Cb - 128;
+        int Cb3 = input->data[i + 3].Cb - 128;
+        
+        int Cr0 = input->data[i].Cr - 128;
+        int Cr1 = input->data[i + 1].Cr - 128;
+        int Cr2 = input->data[i + 2].Cr - 128;
+        int Cr3 = input->data[i + 3].Cr - 128;
 
-        int y2 = 4882170 * (input->data[i - 1].Y - 16);
-        int r2 = (y2 + 6694109 * (input->data[i - 1].Cr - 128)) >> 22;
-        int g2 = ((y2 - 3409969 * (input->data[i - 1].Cr - 128) - 1639973 * (input->data[i - 1].Cb - 128))) >> 22;
-        int b2 = (y2 + 8464105 * (input->data[i - 1].Cb - 128)) >> 22;
+        to_rgb->data[i].R = clamp((4882170 * Y0 + 6694109 * Cr0) >> 22);
+        to_rgb->data[i].G = clamp((4882170 * Y0 - 3409969 * Cr0 - 1639973 * Cb0) >> 22);
+        to_rgb->data[i].B = clamp((4882170 * Y0 + 8464105 * Cb0) >> 22);
 
-        to_rgb->data[i - 1].R = r2 > 255 ? 255 : (r2 < 0 ? 0 : r2);
-        to_rgb->data[i - 1].G = g2 > 255 ? 255 : (g2 < 0 ? 0 : g2);
-        to_rgb->data[i - 1].B = b2 > 255 ? 255 : (b2 < 0 ? 0 : b2);
+        to_rgb->data[i + 1].R = clamp((4882170 * Y1 + 6694109 * Cr1) >> 22);
+        to_rgb->data[i + 1].G = clamp((4882170 * Y1 - 3409969 * Cr1 - 1639973 * Cb1) >> 22);
+        to_rgb->data[i + 1].B = clamp((4882170 * Y1 + 8464105 * Cb1) >> 22);
 
-        int y3 = 4882170 * (input->data[i - 2].Y - 16);
-        int r3 = (y3 + 6694109 * (input->data[i - 2].Cr - 128)) >> 22;
-        int g3 = ((y3 - 3409969 * (input->data[i - 2].Cr - 128) - 1639973 * (input->data[i - 2].Cb - 128))) >> 22;
-        int b3 = (y3 + 8464105 * (input->data[i - 2].Cb - 128)) >> 22;
+        to_rgb->data[i + 2].R = clamp((4882170 * Y2 + 6694109 * Cr2) >> 22);
+        to_rgb->data[i + 2].G = clamp((4882170 * Y2 - 3409969 * Cr2 - 1639973 * Cb2) >> 22);
+        to_rgb->data[i + 2].B = clamp((4882170 * Y2 + 8464105 * Cb2) >> 22);
 
-        to_rgb->data[i - 2].R = r3 > 255 ? 255 : (r3 < 0 ? 0 : r3);
-        to_rgb->data[i - 2].G = g3 > 255 ? 255 : (g3 < 0 ? 0 : g3);
-        to_rgb->data[i - 2].B = b3 > 255 ? 255 : (b3 < 0 ? 0 : b3);
-
-        int y4 = 4882170 * (input->data[i - 3].Y - 16);
-        int r4 = (y4 + 6694109 * (input->data[i - 3].Cr - 128)) >> 22;
-        int g4 = ((y4 - 3409969 * (input->data[i - 3].Cr - 128) - 1639973 * (input->data[i - 3].Cb - 128))) >> 22;
-        int b4 = (y4 + 8464105 * (input->data[i - 3].Cb - 128)) >> 22;
-
-        to_rgb->data[i - 3].R = r4 > 255 ? 255 : (r4 < 0 ? 0 : r4);
-        to_rgb->data[i - 3].G = g4 > 255 ? 255 : (g4 < 0 ? 0 : g4);
-        to_rgb->data[i - 3].B = b4 > 255 ? 255 : (b4 < 0 ? 0 : b4);
+        to_rgb->data[i + 3].R = clamp((4882170 * Y3 + 6694109 * Cr3) >> 22);
+        to_rgb->data[i + 3].G = clamp((4882170 * Y3 - 3409969 * Cr3 - 1639973 * Cb3) >> 22);
+        to_rgb->data[i + 3].B = clamp((4882170 * Y3 + 8464105 * Cb3) >> 22);
     }
 
     return to_rgb;
@@ -205,13 +176,13 @@ int main(int argc, char* argv[]) {
     FILE* fptr;
     FILE* fout;
 
-    fptr = fopen("dog100.raw", "rb");
+    fptr = fopen("input_test.raw", "rb");
     if (fptr == NULL) {
         printf("Input File error");
         exit(1);
     }
 
-    fout = fopen("dog100_new.raw", "wb");
+    fout = fopen("input_test_converted.raw", "wb");
     if (fout == NULL) {
         printf("Output File error");
         exit(1);
